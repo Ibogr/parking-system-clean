@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { submitParkingBatch, getReport } from "../services/api";
+import { submitParkingBatch, getReport, downloadReport } from "../services/api";
 
-export default function ParkingForm({user}) {
+export default function ParkingForm() {
   const [site, setSite] = useState("ShamrockHouse");
   const [row, setRow] = useState("Row 1");
   const [spaceNumber, setSpaceNumber] = useState("");
@@ -9,10 +9,11 @@ export default function ParkingForm({user}) {
   const [date, setDate] = useState("");
   const [list, setList] = useState([]);
   const [warning, setWarning] = useState("");
+  const [reports, setReports] = useState([]);
 
+  // ================== ADD ==================
   const addToList = () => {
     if (!plateNumber || !spaceNumber) return;
-    console.log(plateNumber, spaceNumber);
 
     const exists = list.some(
       (i) => i.row === row && String(i.spaceNumber) === String(spaceNumber)
@@ -31,40 +32,56 @@ export default function ParkingForm({user}) {
     setSpaceNumber("");
   };
 
-const submitAll = async () => {
-  if (list.length === 0) {
-    alert("List is empty ❌");
-    return;
-  }
+  // ================== SUBMIT ==================
+  const submitAll = async () => {
+    if (list.length === 0) return alert("List is empty ❌");
+    if (!date) return alert("Select date ❌");
 
-  if (!date) {
-    alert("Select date ❌");
-    return;
-  }
+    try {
+      const res = await submitParkingBatch({
+        site,
+        date,
+        entries: list,
+      });
 
-  try {
-    const res = await submitParkingBatch({
-      site,
-      date,
-      entries: list,
-    });
-console.log("res",res);
-
-    if (res.success) {
-      alert("Saved ✅");
-      setList([]);
-    } else {
-      alert(res.message);
+      if (res.success) {
+        alert("Saved ✅");
+        setList([]);
+      } else {
+        alert(res.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error ❌");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Server crashed ❌");
-  }  
-};
+  };
 
-  const printReport = async () => {
-    await getReport({ site, date, user});
-    alert("Report sent!");
+  // ================== DOWNLOAD ==================
+  const handleDownload = async () => {
+    if (!date) return alert("Select date ❌");
+
+    try {
+      await downloadReport({ site, date });
+    } catch (err) {
+      console.error(err);
+      alert("Download failed ❌");
+    }
+  };
+
+  // ================== REPORT ==================
+  const fetchReport = async () => {
+    if (!date) return alert("Select date ❌");
+
+    try {
+      const res = await getReport({ site, date });
+
+      if (res.success) {
+        setReports(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error ❌");
+    }
   };
 
   return (
@@ -78,6 +95,7 @@ console.log("res",res);
 
           <select
             style={styles.input}
+            value={site}
             onChange={(e) => setSite(e.target.value)}
           >
             <option>ShamrockHouse</option>
@@ -85,7 +103,11 @@ console.log("res",res);
             <option>WHCP zone 2</option>
           </select>
 
-          <select style={styles.input} onChange={(e) => setRow(e.target.value)}>
+          <select
+            style={styles.input}
+            value={row}
+            onChange={(e) => setRow(e.target.value)}
+          >
             {[...Array(10)].map((_, i) => (
               <option key={i}>Row {i + 1}</option>
             ))}
@@ -108,6 +130,7 @@ console.log("res",res);
           <input
             style={styles.input}
             type="date"
+            value={date}
             onChange={(e) => setDate(e.target.value)}
           />
 
@@ -119,8 +142,12 @@ console.log("res",res);
             Submit All
           </button>
 
-          <button style={styles.btnSecondary} onClick={printReport}>
-            Print Report
+          <button style={styles.btnSecondary} onClick={fetchReport}>
+            Get Report
+          </button>
+
+          <button style={styles.btnSecondary} onClick={handleDownload}>
+            Download PDF
           </button>
         </div>
 
@@ -146,83 +173,101 @@ console.log("res",res);
               </button>
             </div>
           ))}
+
+          <h3 style={styles.title}>Report</h3>
+
+          {reports.length === 0 && (
+            <div style={{ color: "#777" }}>No report loaded</div>
+          )}
+
+          {reports.map((r, i) => (
+            <div
+              key={i}
+              style={{
+                ...styles.row,
+                color: r.longStay ? "#ff4d4d" : "white",
+              }}
+            >
+              🚗 {r.plateNumber} | {r.row} | Space {r.spaceNumber} | {r.days}{" "}
+              days
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
+// ================== STYLES ==================
 const styles = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#0d0d0d",
+    backgroundColor: "#0a0a0a",
     display: "flex",
     justifyContent: "center",
-    padding: "20px",
+    padding: "30px",
+    fontFamily: "Arial",
   },
 
   container: {
     width: "100%",
-    maxWidth: "1200px", // 🔥 full screen ama kontrollü
-    display: "flex",
-    gap: "20px",
-    flexWrap: "wrap", // 🔥 responsive
+    maxWidth: "1200px",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "24px",
   },
 
   card: {
-    flex: 1, // 🔥 eşit genişlik
-    minWidth: "320px", // 🔥 mobil kırılma
-    backgroundColor: "#1a1a1a",
-    padding: "20px",
-    borderRadius: "12px",
-    border: "1px solid #333",
+    backgroundColor: "#151515",
+    padding: "22px",
+    borderRadius: "14px",
+    border: "1px solid #2a2a2a",
     display: "flex",
     flexDirection: "column",
-    gap: "10px",
+    gap: "12px",
   },
 
   title: {
     color: "white",
-    marginBottom: "10px",
+    fontSize: "18px",
+    fontWeight: "600",
   },
 
   input: {
-    width: "100%", // 🔥 FULL WIDTH
+    width: "100%",
     padding: "12px",
-    borderRadius: "6px",
-    border: "1px solid #333",
-    backgroundColor: "#111",
+    borderRadius: "8px",
+    border: "1px solid #2a2a2a",
+    backgroundColor: "#0f0f0f",
     color: "white",
+    outline: "none",
     boxSizing: "border-box",
   },
 
   btn: {
-    width: "100%",
     padding: "12px",
-    backgroundColor: "#333",
+    backgroundColor: "#2a2a2a",
     color: "white",
-    border: "none",
-    borderRadius: "6px",
+    border: "1px solid #3a3a3a",
+    borderRadius: "8px",
     cursor: "pointer",
   },
 
   btnPrimary: {
-    width: "100%",
     padding: "12px",
     backgroundColor: "#000",
-    border: "1px solid #555",
     color: "white",
-    borderRadius: "6px",
+    border: "1px solid #555",
+    borderRadius: "8px",
     cursor: "pointer",
   },
 
   btnSecondary: {
-    width: "100%",
     padding: "12px",
-    backgroundColor: "#222",
+    backgroundColor: "#1b1b1b",
     color: "white",
-    border: "none",
-    borderRadius: "6px",
+    border: "1px solid #333",
+    borderRadius: "8px",
     cursor: "pointer",
   },
 
@@ -230,20 +275,23 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     padding: "10px",
-    borderBottom: "1px solid #333",
+    backgroundColor: "#111",
+    borderRadius: "8px",
+    border: "1px solid #222",
   },
 
   delete: {
     background: "transparent",
     border: "none",
-    color: "white",
+    color: "#ff4d4d",
     cursor: "pointer",
   },
 
   warning: {
-    backgroundColor: "#5a0000",
-    padding: "8px",
-    borderRadius: "6px",
-    color: "white",
+    backgroundColor: "#3a0d0d",
+    padding: "10px",
+    borderRadius: "8px",
+    color: "#ffb3b3",
+    border: "1px solid #5a1a1a",
   },
 };

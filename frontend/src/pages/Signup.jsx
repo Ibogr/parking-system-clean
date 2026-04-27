@@ -2,43 +2,36 @@ import { useState } from "react";
 import { signupUser } from "../services/api";
 
 export default function Signup({ switchToLogin }) {
+  const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [userName, setUserName] = useState("");
-
-  
-  
-
 
   const handleSignup = async () => {
     const res = await signupUser(userEmail, password, userName);
-console.log(userEmail, password, userName);
 
     if (res.success) {
-      alert("Account created");
+      alert("Account created ✅");
       switchToLogin();
     } else {
-      alert("User already exists");
+      alert("Signup failed ❌");
     }
   };
 
   return (
     <div style={styles.wrapper}>
-      <div style={styles.container}>
-        <h2 style={styles.title}>Create Account</h2>
+      <div style={styles.box}>
+        <h2 style={styles.title}>Signup</h2>
 
         <input
           style={styles.input}
-          type="email"
-          placeholder="User-Email"
-          onChange={(e) => setUserEmail(e.target.value)}
+          placeholder="Name"
+          onChange={(e) => setUserName(e.target.value)}
         />
 
         <input
           style={styles.input}
-          type="name"
-          placeholder="User Name"
-          onChange={(e) => setUserName(e.target.value)}
+          placeholder="Email"
+          onChange={(e) => setUserEmail(e.target.value)}
         />
 
         <input
@@ -49,58 +42,68 @@ console.log(userEmail, password, userName);
         />
 
         <button style={styles.button} onClick={handleSignup}>
-          Signup
+          Create Account
         </button>
 
-        <p onClick={switchToLogin} style={styles.link}>
-          Back to Login
+        <p style={styles.link} onClick={switchToLogin}>
+          Already have an account? Login
         </p>
       </div>
     </div>
   );
 }
 
+// ================== STYLES ==================
 const styles = {
   wrapper: {
     height: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#121212", // koyu arka plan
+    backgroundColor: "#0d0d0d",
+    fontFamily: "Arial",
   },
-  container: {
+
+  box: {
     width: "320px",
+    padding: "30px",
+    backgroundColor: "#1a1a1a",
+    borderRadius: "12px",
+    border: "1px solid #333",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
     display: "flex",
     flexDirection: "column",
-    gap: "15px",
-    padding: "30px",
-    borderRadius: "12px",
-    backgroundColor: "#1e1e1e", // kart koyu gri
-    boxShadow: "0px 8px 25px rgba(0,0,0,0.5)",
+    gap: "12px",
   },
+
   title: {
     textAlign: "center",
-    color: "#ffffff",
+    color: "white",
+    marginBottom: "10px",
   },
+
   input: {
-    padding: "10px",
+    padding: "12px",
     borderRadius: "6px",
     border: "1px solid #333",
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#111",
     color: "white",
+    outline: "none",
   },
+
   button: {
-    padding: "10px",
-    border: "none",
-    backgroundColor: "#3a3a3a",
-    color: "white",
+    padding: "12px",
     borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#333",
+    color: "white",
     cursor: "pointer",
-    transition: "0.2s",
   },
+
   link: {
     textAlign: "center",
     color: "#aaa",
     cursor: "pointer",
+    fontSize: "14px",
   },
 };

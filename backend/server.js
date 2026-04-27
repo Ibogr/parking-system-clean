@@ -3,22 +3,13 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const PDFDocument = require("pdfkit");
-const nodemailer = require("nodemailer");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const app = express();
 
 // ================== MIDDLEWARE ==================
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://parkingmanagementsysstem.netlify.app",
-    ],
-  })
-);
+app.use(cors());
 
 app.use(express.json());
 
@@ -45,14 +36,14 @@ parkingSchema.index(
 
 const Parking = mongoose.model("Parking", parkingSchema);
 
-const User = mongoose.model(
-  "User",
-  new mongoose.Schema({
-    userEmail: String,
-    userName: String,
-    password: String,
-  })
-);
+const userSchema = new mongoose.Schema({
+  userEmail: String,
+  userName: String,
+  password: String,
+  role: { type: String, default: "officer" }, // officer | manager
+});
+
+const User = mongoose.model("User", userSchema);
 
 // ================== AUTH ==================
 function authMiddleware(req, res, next) {
@@ -100,6 +91,27 @@ async function getDayCount(e) {
   return count;
 }
 
+// ================== SIGNUP ==================
+app.post("/signup", async (req, res) => {
+  try {
+    const { userEmail, password, userName, role } = req.body;
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    await new User({
+      userEmail,
+      userName,
+      password: hashed,
+      role: role || "officer",
+    }).save();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false });
+  }
+});
+
 // ================== LOGIN ==================
 app.post("/login", async (req, res) => {
   try {
@@ -112,7 +124,11 @@ app.post("/login", async (req, res) => {
     if (!ok) return res.json({ success: false });
 
     const token = jwt.sign(
-      { userEmail: user.userEmail, userName: user.userName },
+      {
+        userEmail: user.userEmail,
+        userName: user.userName,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -124,19 +140,14 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ================== SIGNUP ==================
-app.post("/signup", async (req, res) => {
-  const { userEmail, password, userName } = req.body;
-
-  const hashed = await bcrypt.hash(password, 10);
-  await new User({ userName, password: hashed, userEmail }).save();
-
-  res.json({ success: true });
-});
-
-// ================== SUBMIT ==================
+// ================== SUBMIT (SECURITY) ==================
 app.post("/submit-batch", authMiddleware, async (req, res) => {
+  console.log(req.body)
   try {
+    // if (req.user.role !== "officer") {
+    //   return res.status(403).json({ message: "Only officers can submit" });
+    // }
+
     const { site, date, entries } = req.body;
 
     const cleanDate = normalizeDate(date);
@@ -166,87 +177,186 @@ app.post("/submit-batch", authMiddleware, async (req, res) => {
   }
 });
 
-// ================== REPORT ==================
-app.post("/report", authMiddleware, async (req, res) => {
+// ================== REPORT (MANAGER) ==================
+app.get("/reports", authMiddleware, async (req, res) => {
   try {
-    const { site, date, user } = req.body;
-    const cleanDate = normalizeDate(date);
+    // if (req.user.role !== "manager") {
+    //   return res.status(403).json({ message: "Access denied" });
+    // }
 
-    const data = await Parking.find({ site, date: cleanDate });
+    const { site, date } = req.query;
 
-    const doc = new PDFDocument();
-    let buffers = [];
+    let filter = {};
 
-    doc.text(`SITE: ${site}`);
-    doc.text(`DATE: ${cleanDate}`);
-    doc.text(`Security Officer: ${user.userName}`);
-    doc.moveDown();
+    if (site) filter.site = site;
+    if (date) filter.date = normalizeDate(date);
 
-    let longStay = [];
+    const data = await Parking.find(filter).sort({ date: -1 });
+
+    const result = [];
 
     for (const e of data) {
       const days = await getDayCount(e);
 
-      if (days >= 5) {
-        doc.fillColor("red");
-        longStay.push({ ...e, days });
-      } else {
-        doc.fillColor("black");
-      }
-
-      doc.text(
-        `${e.row} | space ${e.spaceNumber} | ${e.plateNumber} | ${days} days`
-      );
+      result.push({
+        site: e.site,
+        row: e.row,
+        spaceNumber: e.spaceNumber,
+        plateNumber: e.plateNumber,
+        personnel: e.personnel,
+        date: e.date,
+        days,
+        longStay: days >= 5,
+      });
     }
 
-    if (longStay.length > 0) {
-      doc.moveDown();
-      doc.fillColor("red");
-      doc.text("LONG STAY (5+ DAYS)");
-    }
-
-    longStay.forEach((e) => {
-      doc.text(`${e.plateNumber} → ${e.days} days`);
-    });
-
-    // PDF oluşturmayı await et
-    const pdf = await new Promise((resolve, reject) => {
-      doc.on("data", (chunk) => buffers.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(buffers)));
-      doc.on("error", reject);
-      doc.end();
-    });
-
-    // EMAIL (await!)
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: "Parking Report",
-      attachments: [{ filename: "report.pdf", content: pdf }],
-    });
-
-    console.log("📧 Mail sent");
-
-    res.json({ success: true });
+    res.json({ success: true, data: result });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Report error" });
   }
 });
+const path = require("path");
+const PDFDocument = require("pdfkit");
+
+app.get("/reports/download", authMiddleware, async (req, res) => {
+  try {
+    const { site, date } = req.query;
+    const cleanDate = normalizeDate(date);
+
+    const data = await Parking.find({ site, date: cleanDate });
+
+    const doc = new PDFDocument({ margin: 40 });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=parking-report.pdf"
+    );
+
+    doc.pipe(res);
+
+    // ================== LOGO (TOP CENTER) ==================
+    const logoPath = path.join(__dirname, "manguard.png");
+
+    try {
+      const imgWidth = 140;
+
+      const x = (doc.page.width - imgWidth) / 2;
+      const y = 20; // üstte sabit
+
+      doc.image(logoPath, x, y, {
+        width: imgWidth,
+      });
+    } catch (err) {
+      console.log("Logo error:", err);
+    }
+
+    // LOGO ALTINA BOŞLUK VER
+    doc.moveDown(6);
+
+    // ================== TITLE ==================
+    doc
+      .fontSize(20)
+      .fillColor("black")
+      .text("Parking Report", { align: "center" });
+
+    doc.moveDown(0.5);
+
+    doc
+      .fontSize(10)
+      .fillColor("gray")
+      .text(`Generated: ${new Date().toLocaleString()}`, {
+        align: "center",
+      });
+
+    doc.moveDown(2);
+
+    // ================== INFO ==================
+    doc
+      .fontSize(12)
+      .fillColor("black")
+      .text(`Site: ${site}`)
+      .text(`Date: ${cleanDate}`)
+      .moveDown();
+
+    // ================== TABLE HEADER ==================
+    const startY = doc.y;
+
+    doc
+      .fontSize(11)
+      .text("Row", 40, startY)
+      .text("Space", 100, startY)
+      .text("Plate", 170, startY)
+      .text("Days", 300, startY);
+
+    doc
+      .moveTo(40, startY + 15)
+      .lineTo(500, startY + 15)
+      .stroke();
+
+    // ================== TABLE DATA ==================
+    let y = startY + 25;
+
+    let total = 0;
+    let longStayCount = 0;
+
+    for (const e of data) {
+      const days = await getDayCount(e);
+      total++;
+
+      if (days >= 5) {
+        doc.fillColor("red");
+        longStayCount++;
+      } else {
+        doc.fillColor("black");
+      }
+
+      doc
+        .fontSize(10)
+        .text(e.row, 40, y)
+        .text(String(e.spaceNumber), 100, y)
+        .text(e.plateNumber, 170, y)
+        .text(String(days), 300, y);
+
+      y += 20;
+
+      if (y > 700) {
+        doc.addPage();
+        y = 50;
+      }
+    }
+
+    doc.fillColor("black");
+
+    // ================== SUMMARY ==================
+    doc.moveDown(2);
+
+    doc
+      .fontSize(12)
+      .text("Summary", { underline: true })
+      .moveDown(0.5)
+      .text(`Total Cars: ${total}`)
+      .text(`Long Stay (5+ days): ${longStayCount}`);
+
+    // ================== FOOTER ==================
+    doc
+      .fontSize(8)
+      .fillColor("gray")
+      .text("Generated by Ibrahim Gurses", 40, doc.page.height - 50, {
+        align: "center",
+      });
+
+    doc.end();
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "PDF error" });
+  }
+});
 
 // ================== TEST ==================
 app.get("/test", (req, res) => {
-  res.json({ message: "API TEST!!" });
+  res.json({ message: "API WORKING 🚀" });
 });
 
 // ================== START ==================

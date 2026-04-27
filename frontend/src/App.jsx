@@ -2,19 +2,17 @@ import { useState, useEffect } from "react";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import ManagerPanel from "./pages/ManagerPanel";
 
-import  jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 function App() {
   const [user, setUser] = useState(null);
   const [showSignup, setShowSignup] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ================== AUTO LOGIN ==================
   useEffect(() => {
     const token = localStorage.getItem("token");
-
-    console.log("TOKEN:", token);
 
     if (!token) {
       setLoading(false);
@@ -24,15 +22,12 @@ function App() {
     try {
       const decoded = jwtDecode(token);
 
-      console.log("DECODED:", decoded);
-
       setUser({
-        id: decoded.id,
         userName: decoded.userName,
         userEmail: decoded.userEmail,
+        role: decoded.role,
       });
-    } catch (err) {
-      console.log("Token invalid ❌", err);
+    } catch {
       localStorage.removeItem("token");
       setUser(null);
     } finally {
@@ -40,42 +35,33 @@ function App() {
     }
   }, []);
 
-  // ================== LOADING ==================
-  if (loading) {
-    return (
-      <div style={{ color: "white", textAlign: "center", marginTop: "50px" }}>
-        Loading...
-      </div>
-    );
-  }
+  if (loading) return <div>Loading...</div>;
 
-  // ================== LOGIN / SIGNUP ==================
   if (!user) {
     return showSignup ? (
       <Signup switchToLogin={() => setShowSignup(false)} />
     ) : (
       <Login
         onLogin={(token) => {
-          try {
-            localStorage.setItem("token", token);
+          localStorage.setItem("token", token);
 
-            const decoded = jwtDecode(token);
+          const decoded = jwtDecode(token);
 
-            setUser({
-              id: decoded.id,
-              userName: decoded.userName,
-              userEmail: decoded.userEmail,
-            });
-          } catch (err) {
-            console.log("Login decode error ❌", err);
-          }
+          setUser({
+            userName: decoded.userName,
+            userEmail: decoded.userEmail,
+            role: decoded.role,
+          });
         }}
         switchToSignup={() => setShowSignup(true)}
       />
     );
   }
 
-  // ================== DASHBOARD ==================
+  if (user.role === "manager") {
+    return <ManagerPanel />;
+  }
+
   return (
     <Dashboard
       user={user}

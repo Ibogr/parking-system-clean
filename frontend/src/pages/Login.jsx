@@ -6,32 +6,20 @@ export default function Login({ onLogin, switchToSignup }) {
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    try {
-      const res = await loginUser({ userEmail, password });
-      console.log(res.token);
-      
-      
-      
-      if (res.success) {
-        onLogin(res.token); // 🔥 FIX
-      } else {
-        alert("Login failed ❌");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Server error ❌");
-    }
+    const res = await loginUser({ userEmail, password });
+
+    if (res.success) onLogin(res.token);
+    else alert("Login failed");
   };
 
   return (
     <div style={styles.wrapper}>
-      <div style={styles.container}>
+      <div style={styles.box}>
         <h2 style={styles.title}>Login</h2>
 
         <input
           style={styles.input}
-          placeholder="user-Email"
-          value={userEmail}
+          placeholder="Email"
           onChange={(e) => setUserEmail(e.target.value)}
         />
 
@@ -39,7 +27,6 @@ export default function Login({ onLogin, switchToSignup }) {
           style={styles.input}
           type="password"
           placeholder="Password"
-          value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
@@ -55,29 +42,32 @@ export default function Login({ onLogin, switchToSignup }) {
   );
 }
 
+// ================== STYLES ==================
 const styles = {
   wrapper: {
     height: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#121212",
+    backgroundColor: "#0d0d0d",
+    fontFamily: "Arial",
   },
 
-  container: {
+  box: {
     width: "320px",
+    padding: "30px",
+    backgroundColor: "#1a1a1a",
+    borderRadius: "12px",
+    border: "1px solid #333",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
     display: "flex",
     flexDirection: "column",
-    gap: "15px",
-    padding: "30px",
-    borderRadius: "12px",
-    backgroundColor: "#1e1e1e",
-    boxShadow: "0px 8px 25px rgba(0,0,0,0.5)",
+    gap: "12px",
   },
 
   title: {
     textAlign: "center",
-    color: "#ffffff",
+    color: "white",
     marginBottom: "10px",
   },
 
@@ -85,17 +75,17 @@ const styles = {
     padding: "12px",
     borderRadius: "6px",
     border: "1px solid #333",
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#111",
     color: "white",
     outline: "none",
   },
 
   button: {
     padding: "12px",
-    border: "none",
-    backgroundColor: "#3a3a3a",
-    color: "white",
     borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#333",
+    color: "white",
     cursor: "pointer",
   },
 
@@ -103,5 +93,6 @@ const styles = {
     textAlign: "center",
     color: "#aaa",
     cursor: "pointer",
+    fontSize: "14px",
   },
 };

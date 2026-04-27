@@ -1,22 +1,14 @@
 import ParkingForm from "../components/ParkingForm";
 
 export default function Dashboard({ user, onLogout }) {
-  const logout = () => {
-    localStorage.removeItem("token"); // 🔥 token sil
-    onLogout(); // state temizle
-  };
-
   return (
     <div style={styles.wrapper}>
       {/* HEADER */}
       <div style={styles.header}>
-        <div>
-          <h2 style={styles.welcome}>Welcome</h2>
-          <p style={styles.username}>{user.userName}</p>
-        </div>
+        <h2>Welcome {user.userName}</h2>
 
-        <button style={styles.logoutBtn} onClick={logout}>
-          Logout
+        <button style={styles.logoutBtn} onClick={onLogout}>
+          Sign Out
         </button>
       </div>
 
@@ -28,25 +20,16 @@ export default function Dashboard({ user, onLogout }) {
 
 const styles = {
   wrapper: {
-    padding: "30px",
+    padding: "20px",
+    color: "white",
     backgroundColor: "#121212",
     minHeight: "100vh",
-    color: "white",
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "30px",
-  },
-  welcome: {
-    margin: 0,
-    color: "#aaa",
-  },
-  username: {
-    margin: 0,
-    fontSize: "20px",
-    fontWeight: "bold",
+    marginBottom: "20px",
   },
   logoutBtn: {
     padding: "8px 15px",
