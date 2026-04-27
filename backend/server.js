@@ -220,6 +220,17 @@ const path = require("path");
 const PDFDocument = require("pdfkit");
 
 app.get("/reports/download", authMiddleware, async (req, res) => {
+
+  function formatDate(date) {
+    const d = new Date(date);
+
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
   try {
     const { site, date } = req.query;
     const cleanDate = normalizeDate(date);
@@ -243,7 +254,7 @@ app.get("/reports/download", authMiddleware, async (req, res) => {
       const imgWidth = 140;
 
       const x = (doc.page.width - imgWidth) / 2;
-      const y = 20; // üstte sabit
+      const y = 20; 
 
       doc.image(logoPath, x, y, {
         width: imgWidth,
@@ -266,20 +277,20 @@ app.get("/reports/download", authMiddleware, async (req, res) => {
     doc
       .fontSize(10)
       .fillColor("gray")
-      .text(`Generated: ${new Date().toLocaleString()}`, {
+      .text(`Generated: ${formatDate(new Date())}`, {
         align: "center",
       });
 
     doc.moveDown(2);
 
     // ================== INFO ==================
-    doc
-      .fontSize(12)
-      .fillColor("black")
-      .text(`Site: ${site}`)
-      .text(`Date: ${cleanDate}`)
-      .moveDown();
-
+doc
+  .fontSize(12)
+  .fillColor("black")
+  .text(`Site: ${site}`)
+  .text(`Date: ${formatDate(cleanDate)}`)
+  .text(`Security Officer: ${req.user.userName}`) 
+  .moveDown();
     // ================== TABLE HEADER ==================
     const startY = doc.y;
 
