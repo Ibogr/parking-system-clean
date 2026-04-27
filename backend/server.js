@@ -10,7 +10,6 @@ const app = express();
 
 // ================== MIDDLEWARE ==================
 app.use(cors());
-
 app.use(express.json());
 
 // ================== DB ==================
@@ -40,7 +39,7 @@ const userSchema = new mongoose.Schema({
   userEmail: String,
   userName: String,
   password: String,
-  role: { type: String, default: "officer" }, // officer | manager
+  role: { type: String, default: "officer" },
 });
 
 const User = mongoose.model("User", userSchema);
@@ -64,6 +63,15 @@ function authMiddleware(req, res, next) {
 // ================== DATE ==================
 function normalizeDate(date) {
   return date.split("T")[0];
+}
+
+// ================== DATE FORMAT (DD/MM/YYYY) ==================
+function formatDate(date) {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 // ================== DAY COUNT ==================
@@ -140,16 +148,14 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ================== SUBMIT (SECURITY) ==================
+// ================== SUBMIT ==================
 app.post("/submit-batch", authMiddleware, async (req, res) => {
-  console.log(req.body)
   try {
-    // if (req.user.role !== "officer") {
-    //   return res.status(403).json({ message: "Only officers can submit" });
-    // }
+    if (req.user.role !== "officer") {
+      return res.status(403).json({ message: "Only officers can submit" });
+    }
 
     const { site, date, entries } = req.body;
-
     const cleanDate = normalizeDate(date);
 
     const data = entries.map((e) => ({
@@ -157,7 +163,7 @@ app.post("/submit-batch", authMiddleware, async (req, res) => {
       row: e.row,
       spaceNumber: Number(e.spaceNumber),
       plateNumber: e.plateNumber,
-      personnel: req.user.userName,
+      personnel: req.user.userName, // burada doğru kayıt ediliyor
       date: cleanDate,
     }));
 
@@ -177,17 +183,12 @@ app.post("/submit-batch", authMiddleware, async (req, res) => {
   }
 });
 
-// ================== REPORT (MANAGER) ==================
+// ================== REPORT ==================
 app.get("/reports", authMiddleware, async (req, res) => {
   try {
-    // if (req.user.role !== "manager") {
-    //   return res.status(403).json({ message: "Access denied" });
-    // }
-
     const { site, date } = req.query;
 
     let filter = {};
-
     if (site) filter.site = site;
     if (date) filter.date = normalizeDate(date);
 
@@ -216,26 +217,20 @@ app.get("/reports", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Report error" });
   }
 });
+
+// ================== PDF ==================
 const path = require("path");
 const PDFDocument = require("pdfkit");
 
 app.get("/reports/download", authMiddleware, async (req, res) => {
-
-  function formatDate(date) {
-    const d = new Date(date);
-
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-
-    return `${day}/${month}/${year}`;
-  }
-
   try {
     const { site, date } = req.query;
     const cleanDate = normalizeDate(date);
 
     const data = await Parking.find({ site, date: cleanDate });
+
+    // 🔥 BURASI FIX
+    const officerName = data.length > 0 ? data[0].personnel : "No Officer";
 
     const doc = new PDFDocument({ margin: 40 });
 
@@ -247,30 +242,21 @@ app.get("/reports/download", authMiddleware, async (req, res) => {
 
     doc.pipe(res);
 
-    // ================== LOGO (TOP CENTER) ==================
+    // LOGO
     const logoPath = path.join(__dirname, "manguard.png");
-
     try {
       const imgWidth = 140;
-
       const x = (doc.page.width - imgWidth) / 2;
-      const y = 20; 
 
-      doc.image(logoPath, x, y, {
-        width: imgWidth,
-      });
+      doc.image(logoPath, x, 20, { width: imgWidth });
     } catch (err) {
       console.log("Logo error:", err);
     }
 
-    // LOGO ALTINA BOŞLUK VER
     doc.moveDown(6);
 
-    // ================== TITLE ==================
-    doc
-      .fontSize(20)
-      .fillColor("black")
-      .text("Parking Report", { align: "center" });
+    // TITLE
+    doc.fontSize(20).text("Parking Report", { align: "center" });
 
     doc.moveDown(0.5);
 
@@ -283,15 +269,16 @@ app.get("/reports/download", authMiddleware, async (req, res) => {
 
     doc.moveDown(2);
 
-    // ================== INFO ==================
-doc
-  .fontSize(12)
-  .fillColor("black")
-  .text(`Site: ${site}`)
-  .text(`Date: ${formatDate(cleanDate)}`)
-  .text(`Security Officer: ${req.user.userName}`) 
-  .moveDown();
-    // ================== TABLE HEADER ==================
+    // INFO
+    doc
+      .fontSize(12)
+      .fillColor("black")
+      .text(`Site: ${site}`)
+      .text(`Date: ${formatDate(date)}`)
+      .text(`Security Officer: ${officerName}`) // ✅ FIXED
+      .moveDown();
+
+    // TABLE HEADER
     const startY = doc.y;
 
     doc
@@ -306,9 +293,8 @@ doc
       .lineTo(500, startY + 15)
       .stroke();
 
-    // ================== TABLE DATA ==================
+    // TABLE DATA
     let y = startY + 25;
-
     let total = 0;
     let longStayCount = 0;
 
@@ -340,17 +326,16 @@ doc
 
     doc.fillColor("black");
 
-    // ================== SUMMARY ==================
-    doc.moveDown(2);
-
+    // SUMMARY
     doc
+      .moveDown(2)
       .fontSize(12)
       .text("Summary", { underline: true })
       .moveDown(0.5)
       .text(`Total Cars: ${total}`)
       .text(`Long Stay (5+ days): ${longStayCount}`);
 
-    // ================== FOOTER ==================
+    // FOOTER (dokunmadım 👍)
     doc
       .fontSize(8)
       .fillColor("gray")
@@ -363,11 +348,6 @@ doc
     console.log(err);
     res.status(500).json({ error: "PDF error" });
   }
-});
-
-// ================== TEST ==================
-app.get("/test", (req, res) => {
-  res.json({ message: "API WORKING 🚀" });
 });
 
 // ================== START ==================

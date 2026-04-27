@@ -37,6 +37,7 @@ function App() {
 
   if (loading) return <div>Loading...</div>;
 
+  // ================== NOT LOGGED IN ==================
   if (!user) {
     return showSignup ? (
       <Signup switchToLogin={() => setShowSignup(false)} />
@@ -58,10 +59,19 @@ function App() {
     );
   }
 
+  // ================== MANAGER ==================
   if (user.role === "manager") {
-    return <ManagerPanel />;
+    return (
+      <ManagerPanel
+        onLogout={() => {
+          localStorage.removeItem("token");
+          setUser(null);
+        }}
+      />
+    );
   }
 
+  // ================== OFFICER ==================
   return (
     <Dashboard
       user={user}

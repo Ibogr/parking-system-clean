@@ -213,10 +213,7 @@ const styles = {
     width: "100%",
     maxWidth: "1200px",
     display: "grid",
-
-    // 🔥 RESPONSIVE FIX
     gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-
     gap: "20px",
   },
 
@@ -228,8 +225,6 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "12px",
-
-    // 🔥 MOBILE FIX
     minWidth: 0,
   },
 
@@ -248,8 +243,6 @@ const styles = {
     color: "white",
     outline: "none",
     boxSizing: "border-box",
-
-    // 🔥 MOBILE TEXT FIX
     fontSize: "14px",
   },
 
@@ -291,8 +284,6 @@ const styles = {
     backgroundColor: "#111",
     borderRadius: "8px",
     border: "1px solid #222",
-
-    // 🔥 MOBILE TEXT WRAP FIX
     flexWrap: "wrap",
   },
 
