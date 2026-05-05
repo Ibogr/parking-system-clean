@@ -253,6 +253,50 @@ app.get("/reports", authMiddleware, async (req, res) => {
   }
 });
 
+const PDFDocument = require("pdfkit");
+const path = require("path");
+
+// ================== PDF DOWNLOAD ==================
+app.get("/reports/download", authMiddleware, async (req, res) => {
+  try {
+    const { site, date } = req.query;
+    const cleanDate = normalizeDate(date);
+
+    const data = await Parking.find({ site, date: cleanDate });
+
+    const doc = new PDFDocument({ margin: 40 });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=parking-report.pdf"
+    );
+
+    doc.pipe(res);
+
+    // TITLE
+    doc.fontSize(18).text("Parking Report", { align: "center" });
+    doc.moveDown();
+
+    // INFO
+    doc.fontSize(12).text(`Site: ${site}`);
+    doc.text(`Date: ${cleanDate}`);
+    doc.moveDown();
+
+    // TABLE
+    for (const e of data) {
+      const days = await getDayCount(e);
+
+      doc.text(`${e.row} | ${e.spaceNumber} | ${e.plateNumber} | ${days} days`);
+    }
+
+    doc.end();
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "PDF error" });
+  }
+});
+
 // ================== START SERVER ==================
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
