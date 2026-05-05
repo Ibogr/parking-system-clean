@@ -253,8 +253,6 @@ app.get("/reports", authMiddleware, async (req, res) => {
   }
 });
 
-const PDFDocument = require("pdfkit");
-const path = require("path");
 
 // ================== PDF ==================
 const path = require("path");
