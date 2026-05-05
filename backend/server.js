@@ -77,8 +77,17 @@ function authMiddleware(req, res, next) {
 
 // ================== UTIL FUNCTIONS ==================
 
+function formatDate(date) {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 // Normalize date to YYYY-MM-DD format
 function normalizeDate(date) {
+  if (!date) return null;
   return date.split("T")[0];
 }
 
@@ -261,13 +270,15 @@ const PDFDocument = require("pdfkit");
 app.get("/reports/download", authMiddleware, async (req, res) => {
   try {
     const { site, date } = req.query;
+    if (!site || !date) {
+      return res.status(400).json({ error: "site and date required" });
+    }
     const cleanDate = normalizeDate(date);
 
     const data = await Parking.find({ site, date: cleanDate });
 
     // Officer name from first record
-    const officerName =
-      data.length > 0 ? data[0].personnel : "No Officer";
+    const officerName = data.length > 0 ? data[0].personnel : "No Officer";
 
     const doc = new PDFDocument({ margin: 40 });
 
