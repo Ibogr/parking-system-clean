@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { submitParkingBatch, getReport, downloadReport } from "../services/api";
 
-export default function ParkingForm({ loading, setLoading }) {
+export default function ParkingForm({ loading, setLoading, setRequestLoading }) {
   const [site, setSite] = useState("ShamrockHouse");
   const [row, setRow] = useState("Row 1");
   const [spaceNumber, setSpaceNumber] = useState("");
@@ -39,6 +39,7 @@ export default function ParkingForm({ loading, setLoading }) {
 
     try {
       setLoading(true);
+      setRequestLoading(true)
 
       const res = await submitParkingBatch({
         site,
@@ -57,6 +58,7 @@ export default function ParkingForm({ loading, setLoading }) {
       alert("Server error ❌");
     } finally {
       setLoading(false);
+      setRequestLoading(false)
     }
   };
 
@@ -66,6 +68,7 @@ export default function ParkingForm({ loading, setLoading }) {
 
     try {
       setLoading(true);
+      setRequestLoading(true)
 
       await downloadReport({ site, date });
     } catch (err) {
@@ -73,6 +76,8 @@ export default function ParkingForm({ loading, setLoading }) {
       alert("Download failed ❌");
     } finally {
       setLoading(false);
+      setRequestLoading(false);
+
     }
   };
 
@@ -82,6 +87,8 @@ export default function ParkingForm({ loading, setLoading }) {
 
     try {
       setLoading(true);
+      setRequestLoading(true);
+
 
       const res = await getReport({ site, date });
 
@@ -93,6 +100,8 @@ export default function ParkingForm({ loading, setLoading }) {
       alert("Error ❌");
     } finally {
       setLoading(false);
+      setRequestLoading(false);
+
     }
   };
 

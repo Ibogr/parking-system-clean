@@ -118,6 +118,7 @@ function App() {
         <Dashboard
           setRequestLoading={setRequestLoading}
           user={user}
+          setLoading={setLoading}
           onLogout={() => {
             localStorage.removeItem("token");
             setUser(null);

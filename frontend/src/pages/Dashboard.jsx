@@ -1,6 +1,6 @@
 import ParkingForm from "../components/ParkingForm";
 
-export default function Dashboard({ user, onLogout, loading, setLoading }) {
+export default function Dashboard({ user, onLogout, loading, setLoading, setRequestLoading }) {
   return (
     <div style={styles.wrapper}>
       {/* GLOBAL LOADING */}
@@ -20,7 +20,7 @@ export default function Dashboard({ user, onLogout, loading, setLoading }) {
       </div>
 
       {/* CONTENT */}
-      <ParkingForm user={user} loading={loading} setLoading={setLoading} />
+      <ParkingForm user={user} loading={loading} setLoading={setLoading} setRequestLoading={setRequestLoading}/>
     </div>
   );
 }
