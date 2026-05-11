@@ -1,19 +1,30 @@
 import { useState } from "react";
 import { signupUser } from "../services/api";
 
-export default function Signup({ switchToLogin }) {
+export default function Signup({ switchToLogin, setRequestLoading }) {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleSignup = async () => {
-    const res = await signupUser(userEmail, password, userName);
+    try {
+      // START LOADING
+      setRequestLoading(true);
 
-    if (res.success) {
-      alert("Account created ✅");
-      switchToLogin();
-    } else {
-      alert("Signup failed ❌");
+      const res = await signupUser(userEmail, password, userName);
+
+      if (res.success) {
+        alert("Account created ✅");
+        switchToLogin();
+      } else {
+        alert("Signup failed ❌");
+      }
+    } catch (err) {
+      console.log(err);
+      alert("Server error ❌");
+    } finally {
+      // STOP LOADING
+      setRequestLoading(false);
     }
   };
 

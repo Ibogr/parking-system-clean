@@ -1,15 +1,29 @@
 import { useState } from "react";
 import { loginUser } from "../services/api";
 
-export default function Login({ onLogin, switchToSignup }) {
+export default function Login({ onLogin, switchToSignup, setRequestLoading }) {
   const [userEmail, setUserEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    const res = await loginUser({ userEmail, password });
+    try {
+      // START LOADING
+      setRequestLoading(true);
 
-    if (res.success) onLogin(res.token);
-    else alert("Login failed");
+      const res = await loginUser({ userEmail, password });
+
+      if (res.success) {
+        onLogin(res.token);
+      } else {
+        alert("Login failed");
+      }
+    } catch (err) {
+      console.log(err);
+      alert("Server error");
+    } finally {
+      // STOP LOADING
+      setRequestLoading(false);
+    }
   };
 
   return (

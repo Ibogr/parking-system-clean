@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getReport, downloadReport } from "../services/api";
 
-export default function ManagerPanel({ onLogout }) {
+export default function ManagerPanel({ onLogout, setRequestLoading }) {
   const [site, setSite] = useState("ShamrockHouse");
   const [date, setDate] = useState("");
   const [reports, setReports] = useState([]);
@@ -10,10 +10,22 @@ export default function ManagerPanel({ onLogout }) {
   const fetchReport = async () => {
     if (!date) return alert("Select date ❌");
 
-    const res = await getReport({ site, date });
+    try {
+      setRequestLoading(true);
 
-    if (res.success) setReports(res.data);
-    else alert("No data ❌");
+      const res = await getReport({ site, date });
+
+      if (res.success) {
+        setReports(res.data);
+      } else {
+        alert("No data ❌");
+      }
+    } catch (err) {
+      console.log(err);
+      alert("Server error ❌");
+    } finally {
+      setRequestLoading(false);
+    }
   };
 
   // ================== DOWNLOAD ==================
@@ -21,10 +33,14 @@ export default function ManagerPanel({ onLogout }) {
     if (!date) return alert("Select date ❌");
 
     try {
+      setRequestLoading(true);
+
       await downloadReport({ site, date });
     } catch (err) {
       console.error(err);
       alert("Download failed ❌");
+    } finally {
+      setRequestLoading(false);
     }
   };
 
@@ -80,7 +96,7 @@ export default function ManagerPanel({ onLogout }) {
           <div style={{ color: "#888" }}>No data loaded</div>
         )}
 
-        {/* 🔥 OFFICER (ONLY ONCE) */}
+        {/* OFFICER */}
         {officer && (
           <div style={styles.officerBox}>👤 Security Officer: {officer}</div>
         )}

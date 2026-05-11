@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5001";
+const BASE_URL = "https://parking-management-system-yubr.onrender.com";
 
 // ================== TOKEN ==================
 function getTokenHeader() {

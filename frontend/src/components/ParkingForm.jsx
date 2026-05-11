@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { submitParkingBatch, getReport, downloadReport } from "../services/api";
 
-export default function ParkingForm() {
+export default function ParkingForm({ loading, setLoading }) {
   const [site, setSite] = useState("ShamrockHouse");
   const [row, setRow] = useState("Row 1");
   const [spaceNumber, setSpaceNumber] = useState("");
@@ -38,6 +38,8 @@ export default function ParkingForm() {
     if (!date) return alert("Select date ❌");
 
     try {
+      setLoading(true);
+
       const res = await submitParkingBatch({
         site,
         date,
@@ -53,6 +55,8 @@ export default function ParkingForm() {
     } catch (err) {
       console.error(err);
       alert("Server error ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,10 +65,14 @@ export default function ParkingForm() {
     if (!date) return alert("Select date ❌");
 
     try {
+      setLoading(true);
+
       await downloadReport({ site, date });
     } catch (err) {
       console.error(err);
       alert("Download failed ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,6 +81,8 @@ export default function ParkingForm() {
     if (!date) return alert("Select date ❌");
 
     try {
+      setLoading(true);
+
       const res = await getReport({ site, date });
 
       if (res.success) {
@@ -81,6 +91,8 @@ export default function ParkingForm() {
     } catch (err) {
       console.error(err);
       alert("Error ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,27 +139,59 @@ export default function ParkingForm() {
             onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
           />
 
-          <input
-            style={styles.input}
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <div style={styles.inputGroup}>
+            <span style={styles.label}>Date:</span>
 
-          <button style={styles.btn} onClick={addToList}>
+            <input
+              style={styles.input}
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+
+          <button
+            style={{
+              ...styles.btn,
+              opacity: loading ? 0.6 : 1,
+            }}
+            onClick={addToList}
+            disabled={loading}
+          >
             Add
           </button>
 
-          <button style={styles.btnPrimary} onClick={submitAll}>
-            Submit All
+          <button
+            style={{
+              ...styles.btnPrimary,
+              opacity: loading ? 0.6 : 1,
+            }}
+            onClick={submitAll}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Submit All"}
           </button>
 
-          <button style={styles.btnSecondary} onClick={fetchReport}>
-            Get Report
+          <button
+            style={{
+              ...styles.btnSecondary,
+              opacity: loading ? 0.6 : 1,
+            }}
+            onClick={fetchReport}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Get Report"}
           </button>
 
-          <button style={styles.btnSecondary} onClick={handleDownload}>
-            Download PDF
+          <button
+            style={{
+              ...styles.btnSecondary,
+              opacity: loading ? 0.6 : 1,
+            }}
+            onClick={handleDownload}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Download PDF"}
           </button>
         </div>
 
@@ -244,6 +288,18 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
     fontSize: "14px",
+  },
+
+  inputGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+
+  label: {
+    color: "#aaa",
+    fontSize: "14px",
+    minWidth: "50px",
   },
 
   btn: {
